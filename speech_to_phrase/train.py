@@ -95,11 +95,18 @@ async def train(
 
 def _create_intents(model: Model, settings: Settings, things: Things) -> Intents:
     """Create intents from sentences and things from Home Assistant."""
-    sentences_path = settings.sentences / f"{model.sentences_language}.yaml"
-    with open(sentences_path, "r", encoding="utf-8") as sentences_file:
-        lang_data = LanguageData.from_dict(yaml.load(sentences_file))
-        sentences_dict = lang_data.to_intents_dict()
 
+    sentences_path = settings.sentences / f"{model.sentences_language}.yaml"
+    sentences_dict = {}
+    sentences_dict["language"] = model.sentences_language
+    lang_data = LanguageData.from_dict(sentences_dict)
+    if not settings.skip_pre_defined_templates:
+        with open(sentences_path, "r", encoding="utf-8") as sentences_file:
+            lang_data = LanguageData.from_dict(yaml.load(sentences_file))
+            sentences_dict = lang_data.to_intents_dict()
+
+    
+        
     lists_dict = sentences_dict.get("lists", {})
     lists_dict.update(things.to_lists_dict())
 
@@ -197,10 +204,11 @@ def _get_sentences_hash(
     hasher = hashlib.sha256()
 
     # Builtin sentences
-    sentences_path = settings.sentences / f"{model.sentences_language}.yaml"
-    with open(sentences_path, "rb") as sentences_file:
-        chunk = sentences_file.read(chunk_size)
-        hasher.update(chunk)
+    if not settings.skip_pre_defined_templates:
+        sentences_path = settings.sentences / f"{model.sentences_language}.yaml"
+        with open(sentences_path, "rb") as sentences_file:
+            chunk = sentences_file.read(chunk_size)
+            hasher.update(chunk)
 
     # Custom sentences
     for custom_sentences_dir in settings.custom_sentences_dirs:
